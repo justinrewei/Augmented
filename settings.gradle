@@ -1,0 +1,2 @@
+include ':app', ':gdx-backend-android', ':gdx'
+include ':openCVLibrary320'

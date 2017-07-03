@@ -56,12 +56,12 @@ public class AndroidLauncher extends AndroidApplication {
 
         graphics.getView().setKeepScreenOn(true);
 
-        FrameLayout main = (FrameLayout) findViewById(R.id.activity_main);
+        FrameLayout main = (FrameLayout) this.findViewById(R.id.activity_main);
         main.addView(view, 0);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.nativeCameraView);
+        mOpenCvCameraView = (CameraBridgeViewBase) this.findViewById(R.id.nativeCameraView);
 
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
 

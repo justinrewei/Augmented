@@ -9,6 +9,8 @@ import android.widget.TextView;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.assets.loaders.ModelLoader;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -21,7 +23,10 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
+import com.badlogic.gdx.graphics.g3d.loader.ObjLoader;
+import com.badlogic.gdx.graphics.g3d.utils.CameraInputController;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 
 import org.opencv.android.CameraBridgeViewBase;
@@ -30,10 +35,14 @@ import org.opencv.core.Mat;
 
 public class MainActivity extends ApplicationAdapter implements CameraBridgeViewBase.CvCameraViewListener2{
     private Context context;
+    Mat mRgba;
     public PerspectiveCamera cam;
-    public Model model;
-    public ModelInstance instance;
+    public CameraInputController camController;
     public ModelBatch modelBatch;
+    public AssetManager assets;
+    public Array<ModelInstance> instances = new Array<ModelInstance>();
+    public Environment environment;
+    public boolean loading;
 
     public MainActivity(Context context) {
         this.context = context;
@@ -41,31 +50,46 @@ public class MainActivity extends ApplicationAdapter implements CameraBridgeView
 
     @Override
     public void create() {
+        Log.i("MainActivity", "called create");
+        modelBatch = new ModelBatch();
+        environment = new Environment();
+        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
+        environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
+
         cam = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        cam.position.set(10f, 10f, 10f);
+        cam.position.set(1f, 1f, 1f);
         cam.lookAt(0,0,0);
         cam.near = 1f;
         cam.far = 300f;
         cam.update();
 
-        ModelBuilder modelBuilder = new ModelBuilder();
-        model = modelBuilder.createBox(5f, 5f, 5f,
-                new Material(ColorAttribute.createDiffuse(Color.GREEN)),
-                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal);
-        instance = new ModelInstance(model);
+        camController = new CameraInputController(cam);
+        Gdx.input.setInputProcessor(camController);
+
+        assets = new AssetManager();
+        assets.load("ship.obj", Model.class);
+        loading = true;
 
     }
-
-
+    private void doneLoading() {
+        Model ship = assets.get("ship.obj", Model.class);
+        ModelInstance shipInstance = new ModelInstance(ship);
+        instances.add(shipInstance);
+        loading = false;
+    }
 
 
     @Override
     public void render() {
+        if (loading && assets.update())
+            doneLoading();
+        camController.update();
+
         Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
         modelBatch.begin(cam);
-        modelBatch.render(instance);
+        modelBatch.render(instances, environment);
         modelBatch.end();
     }
 
@@ -81,7 +105,9 @@ public class MainActivity extends ApplicationAdapter implements CameraBridgeView
 
     @Override
     public void dispose() {
-        model.dispose();
+        modelBatch.dispose();
+        instances.clear();
+        assets.dispose();
     }
 
     @Override
@@ -96,12 +122,13 @@ public class MainActivity extends ApplicationAdapter implements CameraBridgeView
 
     @Override
     public void onCameraViewStopped() {
-
+        mRgba.release();
     }
 
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        return null;
+        mRgba = inputFrame.rgba();
+        return mRgba;
     }
 
 
